@@ -13,7 +13,8 @@ import wikipedia
 from django.contrib.auth.decorators import login_required
 from django.core.mail import send_mail
 from django.template import loader
-
+from .models import Complain, Comment
+from django.views.generic.base import TemplateView
 # Create your views here.
 
 def home(request):
@@ -243,10 +244,43 @@ def profile(request):
     return render(request,"dashboard/profile.html",context)
 
 
+
+
+
 @login_required
 def complain(request):
+	mymembers = Complain.objects.filter(email=request.user.email)
+	comment = Comment.objects.filter(email=request.user.email)
 	
-	return render(request,"dashboard/home.html")
+	template = loader.get_template('dashboard/complain.html')
+	context = {
+			'mymembers': mymembers,
+			'comment': comment
+			}
+
+	if request.method=='POST':  
+			email = request.POST['email']
+			complain = request.POST['complain']
+			against = request.POST['against']
+			position = request.POST['position']
+			image = request.FILES.get('image')
+			user = User.objects.filter(username = against)
+			
+			if user.first() is not None:
+				if User.objects.filter(username = against).exists():	
+					complain = Complain(email = email, complain=complain, against = against, position = position, image=image)
+					complain.save()
+					messages.success(request, 'Complain Submit Successful')		
+					return HttpResponse(template.render(context, request))
+					
+			else:
+					messages.error(request, 'You are complaining against Non-User (-,-)')
+					return redirect('complain')
+    
+	else:
+   		return render(request,'dashboard/complain.html', context)
+
+
 
 
 @login_required
